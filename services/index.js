@@ -56,10 +56,10 @@ function request(url, body, cb) {
 
 
 // Writes file with token
-function storeToken(tokenData) {
+function storeTokenData(tokenData) {
 	const filePath = path.join(__dirname, '..', '.env-tokens.js');
 
-	let fileContent = `module.exports = ${JSON.stringify(resToken, null, 2)}`;
+	let fileContent = `module.exports = ${JSON.stringify(tokenData, null, 2)}`;
 	fs.writeFile(filePath,
 		fileContent,
 		(err) => console.log(`.env-tokens.js created`));
@@ -114,7 +114,7 @@ function getToken(req, res) {
     			expires_in: data.expires_in
     		}
 
-    	storeToken(resToken);
+    	storeTokenData(resToken);
 
       res.status(200).send(resToken)
     })
@@ -142,14 +142,23 @@ function refreshToken(req, res) {
   			expires_in: data.expires_in
   		}
 
-    	storeToken(resToken);
+    	storeTokenData(resToken);
 
     res.status(200).send(resToken)
 	})
 }
 
+
+
+function dispatchToken(req, res) {
+	res.status(200).send({ access_token: storedToken.access_token })
+}
+
+
+
 module.exports = {
 	spotifyAuth,
 	getToken,
-	refreshToken
+	refreshToken,
+	dispatchToken
 };
