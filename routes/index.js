@@ -5,6 +5,7 @@ const api = express.Router();
 
 const spotifyAuth = require('../services').spotifyAuth;
 const getToken = require('../services').getToken;
+const refreshToken = require('../services').refreshToken;
 
 
 api.get('/', (req, res) => {
@@ -14,5 +15,7 @@ api.get('/', (req, res) => {
 api.get('/spotify-auth', spotifyAuth);
 
 api.get('/callback', getToken);
+
+api.get('/refresh-token', refreshToken);
 
 module.exports = api;

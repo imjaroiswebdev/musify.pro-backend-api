@@ -1,7 +1,13 @@
 'use strict'
 
+const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
 const querystring = require('querystring');
+
+// File for storing the tokens.
+// It will be in a DB in the future
+const storedToken = require('../.env-tokens');
 
 // Default Content-Type for all the request to the API
 axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -25,6 +31,38 @@ const genRandomString = (length) => {
 	const result = new Array(length).fill(0);
 
 	return result.map(() => randomUC(Math.random().toString(36).slice(2, 3))).join("");
+}
+
+
+function request(url, body, cb) {
+	const baseUrl = 'https://accounts.spotify.com/api/';
+
+  let reqBody = querystring.stringify(body);
+
+  const reqConfig = {
+      	url: baseUrl+url,
+      	method: 'post',
+        headers: {
+          Authorization: 'Basic ' + (new Buffer(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'))
+        },
+        data: reqBody,
+        responseType: 'json'
+      };
+
+  axios(reqConfig)
+  	.then(resData => cb(null, resData.data))
+  	.catch(err => cb(err))
+}
+
+
+// Writes file with token
+function storeToken(tokenData) {
+	const filePath = path.join(__dirname, '..', '.env-tokens.js');
+
+	let fileContent = `module.exports = ${JSON.stringify(resToken, null, 2)}`;
+	fs.writeFile(filePath,
+		fileContent,
+		(err) => console.log(`.env-tokens.js created`));
 }
 
 // Request for authentication of this user
@@ -59,28 +97,16 @@ function getToken(req, res) {
   } else {
     res.clearCookie(stateKey);
 
-    const body = querystring.stringify({
+    let reqBody = {
             grant_type: 'authorization_code',
             code: code,
             redirect_uri: REDIRECT_URI,
-          });
+          };
 
-    const reqConfig = {
-        	url: 'https://accounts.spotify.com/api/token',
-        	method: 'post',
-          headers: {
-            Authorization: 'Basic ' + (new Buffer(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'))
-          },
-          data: body,
-          responseType: 'json'
-        };
+    request('token', reqBody, (err, data) => {
+    	if (err) res.status(500).send({ FETCH_ERROR: err });
 
-    axios(reqConfig)
-    	.then(resData => {
-    		const { data } = resData;
-
-
-    		const resToken = {
+    	const resToken = {
     			access_token: data.access_token,
     			refresh_token: data.refresh_token,
     			token_type: data.token_type,
@@ -88,15 +114,42 @@ function getToken(req, res) {
     			expires_in: data.expires_in
     		}
 
-        res.status(200).send(resToken)
-    	})
-    	.catch(err => {
-        res.status(500).send({ FETCH_ERROR: err })   		
-    	})
+    	storeToken(resToken);
+
+      res.status(200).send(resToken)
+    })
   }	
+}
+
+
+function refreshToken(req, res) {
+
+	const refresher = storedToken.refresh_token;
+
+	let reqBody = {
+		grant_type: 'refresh_token',
+		refresh_token: refresher
+	};
+
+	request('token', reqBody, (err, data) => {
+  	if (err) res.status(500).send({ FETCH_ERROR: err });
+
+  	const resToken = {
+  			access_token: data.access_token,
+  			refresh_token: data.refresh_token,
+  			token_type: data.token_type,
+  			scope: data.scope,
+  			expires_in: data.expires_in
+  		}
+
+    	storeToken(resToken);
+
+    res.status(200).send(resToken)
+	})
 }
 
 module.exports = {
 	spotifyAuth,
-	getToken
+	getToken,
+	refreshToken
 };

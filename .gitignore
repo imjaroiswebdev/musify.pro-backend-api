@@ -45,6 +45,7 @@ _notes.md
 .env.local
 .env.development.local
 .env-dev-local.js
+.env-tokens.js
 .env.test.local
 .env.production.local
 
